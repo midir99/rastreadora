@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"text/template"
@@ -51,6 +52,7 @@ Flags:
 
     -o      (string): the filename where the data will be stored, if omitted the data will be
                       dumped in STDOUT.
+    -scert  (bool):   skip the verification of the server's certificate chain and hostname.
     -V      (bool):   print the version of the program.
     -h      (bool):   print this usage message.
 `
@@ -71,13 +73,15 @@ type Args struct {
 	PageFrom     uint64
 	PageUntil    uint64
 	Out          string
+	SkipCert     bool
 	PrintVersion bool
 }
 
 func ParseArgs() (*Args, error) {
 	args := Args{}
-	flag.StringVar(&args.Out, "o", "", "the filename to dump the missing-person posters data, if not present data is dumped into stdout")
-	flag.BoolVar(&args.PrintVersion, "V", false, "print the version of the program")
+	flag.StringVar(&args.Out, "o", "", "the filename where the data will be stored, if omitted the data will be dumped in STDOUT.")
+	flag.BoolVar(&args.SkipCert, "scert", false, "skip the verification of the server's certificate chain and hostname.")
+	flag.BoolVar(&args.PrintVersion, "V", false, "print the version of the program.")
 	flag.Usage = Usage
 	flag.Parse()
 	if args.PrintVersion {
@@ -128,7 +132,7 @@ func PrintVersion() {
 	fmt.Println("rastreadora v0.0.1")
 }
 
-func SelectScraperFuncs(scraper Scraper) (func(*goquery.Document) []mpp.MissingPersonPoster, func(uint64) string, error) {
+func SelectScraperFuncs(scraper Scraper) (func(*goquery.Document, *http.Client) []mpp.MissingPersonPoster, func(uint64) string, error) {
 	switch scraper {
 	case ScraperGroAlba:
 		return ws.ScrapeGroAlbaAlerts, ws.MakeGroAlbaUrl, nil
@@ -153,10 +157,11 @@ func Execute(args *Args) {
 		log.Fatalf("Error: %s", err)
 	}
 	ch := make(chan []mpp.MissingPersonPoster)
+	client := ws.MakeClient(args.SkipCert)
 	for pageNum := args.PageFrom; pageNum <= args.PageUntil; pageNum++ {
 		pageUrl := makeUrl(pageNum)
 		log.Printf("Processing %s ...\n", pageUrl)
-		go ws.Scrape(pageUrl, scraper, ch)
+		go ws.Scrape(pageUrl, client, scraper, ch)
 	}
 	mpps := []mpp.MissingPersonPoster{}
 	pagesCount := args.PageUntil - args.PageFrom + 1

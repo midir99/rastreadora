@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -51,7 +52,7 @@ func MakeGroAlbaUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/alba/page/%d/", pageNum)
 }
 
-func ScrapeGroAlbaAlerts(doc *goquery.Document) []mpp.MissingPersonPoster {
+func ScrapeGroAlbaAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
 	doc.Find(".article_content").Each(func(i int, s *goquery.Selection) {
 		foundAndName := strings.TrimSpace(s.Find("h2 a").Text())
@@ -102,7 +103,7 @@ func MakeGroAmberUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/amber/page/%d/", pageNum)
 }
 
-func ScrapeGroAmberAlerts(doc *goquery.Document) []mpp.MissingPersonPoster {
+func ScrapeGroAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
 	doc.Find(".article_content").Each(func(i int, s *goquery.Selection) {
 		foundAndName := strings.TrimSpace(s.Find("h2 a").Text())

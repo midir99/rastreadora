@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -60,15 +61,15 @@ func MakeMorAmberUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliamorelos.gob.mx/category/alerta-amber/page/%d/", pageNum)
 }
 
-func ScrapeMorAmberPoPostUrl(pageUrl string) (string, error) {
-	doc, err := RetrieveDocument(pageUrl)
+func ScrapeMorAmberPoPostUrl(pageUrl string, client *http.Client) (string, error) {
+	doc, err := RetrieveDocument(pageUrl, client)
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve the page %s", pageUrl)
 	}
 	return doc.Find("div .post-thumb-img-content img").AttrOr("src", ""), nil
 }
 
-func ScrapeMorAmberAlerts(doc *goquery.Document) []mpp.MissingPersonPoster {
+func ScrapeMorAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
 	doc.Find("article").Each(func(i int, s *goquery.Selection) {
 		mpName := strings.Title(strings.TrimSpace(s.Find("h2").Text()))
@@ -80,7 +81,7 @@ func ScrapeMorAmberAlerts(doc *goquery.Document) []mpp.MissingPersonPoster {
 			return
 		}
 		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(s.Find("span .published").Text()))
-		poPosterUrl, _ := ScrapeMorAmberPoPostUrl(poPostUrl)
+		poPosterUrl, _ := ScrapeMorAmberPoPostUrl(poPostUrl, client)
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			AlertType:             mpp.AlertTypeAmber,
 			MpName:                mpName,
@@ -97,7 +98,7 @@ func MakeMorCustomUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliamorelos.gob.mx/cedulas/%d/", pageNum)
 }
 
-func ScrapeMorCustomAlerts(doc *goquery.Document) []mpp.MissingPersonPoster {
+func ScrapeMorCustomAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
 	doc.Find("article").Each(func(i int, s *goquery.Selection) {
 		mpName := strings.Title(strings.TrimSpace(s.Find("h3 a").Text()))
