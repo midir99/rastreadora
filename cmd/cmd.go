@@ -18,16 +18,18 @@ import (
 type Scraper string
 
 const (
-	ScraperGroAlba   = "gro-alba"
-	ScraperGroAmber  = "gro-amber"
-	ScraperMorAmber  = "mor-amber"
-	ScraperMorCustom = "mor-custom"
+	ScraperGroAlba      = "gro-alba"
+	ScraperGroAmber     = "gro-amber"
+	ScraperGroHasVistoA = "gro-hasvistoa"
+	ScraperMorAmber     = "mor-amber"
+	ScraperMorCustom    = "mor-custom"
 )
 
 func ScrapersAvailable() []Scraper {
 	return []Scraper{
 		ScraperGroAlba,
 		ScraperGroAmber,
+		ScraperGroHasVistoA,
 		ScraperMorAmber,
 		ScraperMorCustom,
 	}
@@ -129,7 +131,7 @@ func ParseArgs() (*Args, error) {
 }
 
 func PrintVersion() {
-	fmt.Println("rastreadora v0.0.1")
+	fmt.Println("rastreadora v0.2.0")
 }
 
 func SelectScraperFuncs(scraper Scraper) (func(*goquery.Document, *http.Client) []mpp.MissingPersonPoster, func(uint64) string, error) {
@@ -138,6 +140,8 @@ func SelectScraperFuncs(scraper Scraper) (func(*goquery.Document, *http.Client) 
 		return ws.ScrapeGroAlbaAlerts, ws.MakeGroAlbaUrl, nil
 	case ScraperGroAmber:
 		return ws.ScrapeGroAmberAlerts, ws.MakeGroAmberUrl, nil
+	case ScraperGroHasVistoA:
+		return ws.ScrapeGroHasVistoAAlerts, ws.MakeGroHasVistoAAlertsUrl, nil
 	case ScraperMorAmber:
 		return ws.ScrapeMorAmberAlerts, ws.MakeMorAmberUrl, nil
 	case ScraperMorCustom:

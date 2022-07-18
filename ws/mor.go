@@ -11,10 +11,10 @@ import (
 	"github.com/midir99/rastreadora/mpp"
 )
 
-func ParseMorDate(value string) (string, error) {
+func ParseMorDate(value string) (time.Time, error) {
 	date := strings.Split(value, " ")
 	if len(date) != 3 {
-		return "", fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
 	MONTH_INDEX, DAY_INDEX, YEAR_INDEX := 0, 1, 2
 	var month time.Month
@@ -44,17 +44,17 @@ func ParseMorDate(value string) (string, error) {
 	case "diciembre":
 		month = time.December
 	default:
-		return "", fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
 	day, err := strconv.Atoi(date[DAY_INDEX])
 	if err != nil {
-		return "", fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
 	year, err := strconv.Atoi(date[YEAR_INDEX])
 	if err != nil {
-		return "", fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
-	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Format("2006-01-02"), nil
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC), nil
 }
 
 func MakeMorAmberUrl(pageNum uint64) string {
