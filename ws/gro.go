@@ -160,7 +160,7 @@ func ScrapeGroHasVistoAAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
 	for _, figure := range QueryAll(doc, "figure") {
 		h4 := Query(figure, "h4")
-		mpName := h4.FirstChild.Data
+		mpName := cases.Title(language.LatinAmericanSpanish).String(h4.FirstChild.Data)
 		missingDate, _ := time.Parse("2006-01-02", h4.LastChild.Data)
 		postUrl := AttrOr(Query(figure, "a"), "href", "")
 		if postUrl == "" {

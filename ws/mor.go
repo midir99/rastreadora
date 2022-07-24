@@ -46,15 +46,15 @@ func ParseMorDate(value string) (time.Time, error) {
 	case "diciembre":
 		month = time.December
 	default:
-		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s (unknown month: %s)", value, month)
 	}
-	day, err := strconv.Atoi(date[DAY_INDEX])
+	day, err := strconv.Atoi(strings.TrimSpace(strings.Replace(date[DAY_INDEX], ",", "", 1)))
 	if err != nil {
-		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid day number: %s)", value, date[DAY_INDEX])
 	}
 	year, err := strconv.Atoi(date[YEAR_INDEX])
 	if err != nil {
-		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
+		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid year number: %s)", value, date[YEAR_INDEX])
 	}
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC), nil
 }
@@ -113,7 +113,10 @@ func ScrapeMorCustomAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			continue
 		}
 		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(Query(article, "span").FirstChild.Data))
-		poPosterUrl, _ := url.Parse(strings.TrimSpace(AttrOr(Query(article, "img"), "src", "")))
+		posterUrl := strings.TrimSpace(AttrOr(Query(article, "img"), "src", ""))
+		posterUrl = strings.Replace(posterUrl, "-300x225", "", 1)
+		posterUrl = strings.Replace(posterUrl, "-300x240", "", 1)
+		poPosterUrl, _ := url.Parse(posterUrl)
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			MpName:                mpName,
 			PoPosterUrl:           poPosterUrl,

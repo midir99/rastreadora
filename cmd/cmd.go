@@ -129,7 +129,7 @@ func ParseArgs() (*Args, error) {
 }
 
 func PrintVersion() {
-	fmt.Println("rastreadora v0.3.0	")
+	fmt.Println("rastreadora v0.3.1")
 }
 
 func SelectScraperFuncs(scraper Scraper) (func(*html.Node) []mpp.MissingPersonPoster, func(uint64) string, error) {
