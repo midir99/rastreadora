@@ -3,7 +3,7 @@ module github.com/midir99/rastreadora
 go 1.18
 
 require (
-	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/andybalholm/cascadia v1.3.1 // indirect
-	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8 // indirect
+	github.com/andybalholm/cascadia v1.3.1
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
+	golang.org/x/text v0.3.7
 )

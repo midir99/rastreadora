@@ -2,17 +2,19 @@ package ws
 
 import (
 	"fmt"
-	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/midir99/rastreadora/mpp"
+	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func ParseMorDate(value string) (time.Time, error) {
-	date := strings.Split(value, " ")
+	date := strings.Split(strings.ToLower(value), " ")
 	if len(date) != 3 {
 		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
@@ -61,27 +63,28 @@ func MakeMorAmberUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliamorelos.gob.mx/category/alerta-amber/page/%d/", pageNum)
 }
 
-func ScrapeMorAmberPoPostUrl(pageUrl string, client *http.Client) (string, error) {
-	doc, err := RetrieveDocument(pageUrl, client)
+func ScrapeMorAmberPoPosterUrl(pageUrl string) (string, error) {
+	doc, err := RetrieveDocument(pageUrl)
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve the page %s", pageUrl)
 	}
-	return doc.Find("div .post-thumb-img-content img").AttrOr("src", ""), nil
+	return AttrOr(Query(doc, "div .post-thumb-img-content img"), "src", ""), nil
 }
 
-func ScrapeMorAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
+func ScrapeMorAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
-	doc.Find("article").Each(func(i int, s *goquery.Selection) {
-		mpName := strings.Title(strings.TrimSpace(s.Find("h2").Text()))
+	for _, article := range QueryAll(doc, "article") {
+		mpName := cases.Title(language.LatinAmericanSpanish).String(strings.TrimSpace(Query(article, "h2 a").FirstChild.Data))
 		if mpName == "" {
-			return
+			continue
 		}
-		poPostUrl := strings.TrimSpace(s.Find("a").AttrOr("href", ""))
-		if poPostUrl == "" {
-			return
+		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "a"), "href", "")))
+		if err != nil {
+			continue
 		}
-		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(s.Find("span .published").Text()))
-		poPosterUrl, _ := ScrapeMorAmberPoPostUrl(poPostUrl, client)
+		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(Query(article, "span .published").FirstChild.Data))
+		posterUrl, _ := ScrapeMorAmberPoPosterUrl(poPostUrl.String())
+		poPosterUrl, _ := url.Parse(posterUrl)
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			AlertType:             mpp.AlertTypeAmber,
 			MpName:                mpName,
@@ -90,7 +93,7 @@ func ScrapeMorAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.Miss
 			PoPostUrl:             poPostUrl,
 			PoState:               mpp.StateMorelos,
 		})
-	})
+	}
 	return mpps
 }
 
@@ -98,19 +101,19 @@ func MakeMorCustomUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliamorelos.gob.mx/cedulas/%d/", pageNum)
 }
 
-func ScrapeMorCustomAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
+func ScrapeMorCustomAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
-	doc.Find("article").Each(func(i int, s *goquery.Selection) {
-		mpName := strings.Title(strings.TrimSpace(s.Find("h3 a").Text()))
+	for _, article := range QueryAll(doc, "article") {
+		mpName := cases.Title(language.LatinAmericanSpanish).String(strings.TrimSpace(Query(article, "h3 a").FirstChild.Data))
 		if mpName == "" {
-			return
+			continue
 		}
-		poPostUrl := strings.TrimSpace(s.Find("h3 a").AttrOr("href", ""))
-		if poPostUrl == "" {
-			return
+		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h3 a"), "href", "")))
+		if err != nil {
+			continue
 		}
-		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(s.Find("span").Text()))
-		poPosterUrl := strings.TrimSpace(s.Find("img").AttrOr("src", ""))
+		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(Query(article, "span").FirstChild.Data))
+		poPosterUrl, _ := url.Parse(strings.TrimSpace(AttrOr(Query(article, "img"), "src", "")))
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			MpName:                mpName,
 			PoPosterUrl:           poPosterUrl,
@@ -118,6 +121,6 @@ func ScrapeMorCustomAlerts(doc *goquery.Document, client *http.Client) []mpp.Mis
 			PoPostUrl:             poPostUrl,
 			PoState:               mpp.StateMorelos,
 		})
-	})
+	}
 	return mpps
 }

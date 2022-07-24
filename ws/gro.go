@@ -2,12 +2,14 @@ package ws
 
 import (
 	"fmt"
-	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/midir99/rastreadora/mpp"
+	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func ParseGroDate(value string) (time.Time, error) {
@@ -23,7 +25,7 @@ func ParseGroDate(value string) (time.Time, error) {
 }
 
 func ParseGroFound(value string) bool {
-	switch value {
+	switch strings.ToLower(value) {
 	case "localizada":
 		return true
 	case "localizado":
@@ -34,7 +36,7 @@ func ParseGroFound(value string) bool {
 }
 
 func ParseGroSex(value string) mpp.Sex {
-	switch value {
+	switch strings.ToLower(value) {
 	case "localizada":
 		return mpp.SexFemale
 	case "desaparecida":
@@ -48,43 +50,56 @@ func ParseGroSex(value string) mpp.Sex {
 	}
 }
 
+func ParseNameSexFound(value string) (string, mpp.Sex, bool) {
+	var segments []string
+	for _, sep := range []string{";", ":", ",", "."} {
+		segments = strings.Split(value, sep)
+		if len(segments) == 2 {
+			break
+		}
+	}
+	nonEmptySegments := []string{}
+	for _, seg := range segments {
+		if seg != "" {
+			nonEmptySegments = append(nonEmptySegments, seg)
+		}
+	}
+	name := cases.Title(language.LatinAmericanSpanish).String(value)
+	found := false
+	sex := mpp.Sex("")
+	if len(nonEmptySegments) == 2 {
+		name = cases.Title(language.LatinAmericanSpanish).String(strings.TrimSpace(nonEmptySegments[1]))
+		foundLegend := strings.TrimSpace(nonEmptySegments[0])
+		sex = ParseGroSex(foundLegend)
+		found = ParseGroFound(foundLegend)
+	}
+	return name, sex, found
+}
+
 func MakeGroAlbaUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/alba/page/%d/", pageNum)
 }
 
-func ScrapeGroAlbaAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
+func ScrapeGroAlbaAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
-	doc.Find(".article_content").Each(func(i int, s *goquery.Selection) {
-		foundAndName := strings.TrimSpace(s.Find("h2 a").Text())
-		seps := []string{";", ":", ",", "."}
-		var content []string
-		for _, sep := range seps {
-			content = strings.Split(foundAndName, sep)
-			if len(content) == 2 {
-				break
-			}
-		}
-		mpName := strings.Title(foundAndName)
-		found := false
-		if len(content) == 2 {
-			mpName = strings.Title(strings.TrimSpace(content[1]))
-			foundLegend := strings.ToLower(strings.TrimSpace(content[0]))
-			found = ParseGroFound(foundLegend)
-		}
+	for _, article := range QueryAll(doc, ".article_content") {
+		foundAndName := strings.TrimSpace(Query(article, "h2 a").FirstChild.Data)
+		mpName, _, found := ParseNameSexFound(foundAndName)
 		if mpName == "" {
-			return
+			continue
 		}
-		poPostUrl := strings.TrimSpace(s.Find("h2 a").AttrOr("href", ""))
-		if poPostUrl == "" {
-			return
+		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h2 a"), "href", "")))
+		if err != nil {
+			continue
 		}
-		pubDate := s.Find(".entry-date.published").First().AttrOr("datetime", "")
+		pubDate := AttrOr(Query(article, ".entry-date.published"), "datetime", "")
 		if pubDate == "" {
-			pubDate = s.Find(".entry-date").First().AttrOr("datetime", "")
+			pubDate = AttrOr(Query(article, ".entry-date"), "datetime", "")
 		}
 		poPostPublicationDate, _ := ParseGroDate(pubDate)
-		poPosterUrl := strings.TrimSpace(s.Find("a").AttrOr("data-src", ""))
-		poPosterUrl = strings.Replace(poPosterUrl, "-480x320", "", 1)
+		posterUrl := strings.TrimSpace(AttrOr(Query(article, "a"), "data-src", ""))
+		posterUrl = strings.Replace(posterUrl, "-480x320", "", 1)
+		poPosterUrl, _ := url.Parse(posterUrl)
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			AlertType:             mpp.AlertTypeAlba,
 			Found:                 found,
@@ -95,7 +110,7 @@ func ScrapeGroAlbaAlerts(doc *goquery.Document, client *http.Client) []mpp.Missi
 			PoPostUrl:             poPostUrl,
 			PoState:               mpp.StateGuerrero,
 		})
-	})
+	}
 	return mpps
 }
 
@@ -103,41 +118,26 @@ func MakeGroAmberUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/amber/page/%d/", pageNum)
 }
 
-func ScrapeGroAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
+func ScrapeGroAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
-	doc.Find(".article_content").Each(func(i int, s *goquery.Selection) {
-		foundAndName := strings.TrimSpace(s.Find("h2 a").Text())
-		seps := []string{";", ":", ",", "."}
-		var content []string
-		for _, sep := range seps {
-			content = strings.Split(foundAndName, sep)
-			if len(content) == 2 {
-				break
-			}
-		}
-		mpName := strings.Title(foundAndName)
-		mpSex := mpp.Sex("")
-		found := false
-		if len(content) == 2 {
-			mpName = strings.Title(strings.TrimSpace(content[1]))
-			foundLegend := strings.ToLower(strings.TrimSpace(content[0]))
-			mpSex = ParseGroSex(foundLegend)
-			found = ParseGroFound(foundLegend)
-		}
+	for _, article := range QueryAll(doc, ".article_content") {
+		foundAndName := strings.TrimSpace(Query(article, "h2 a").FirstChild.Data)
+		mpName, mpSex, found := ParseNameSexFound(foundAndName)
 		if mpName == "" {
-			return
+			continue
 		}
-		poPostUrl := strings.TrimSpace(s.Find("h2 a").AttrOr("href", ""))
-		if poPostUrl == "" {
-			return
+		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h2 a"), "href", "")))
+		if err != nil {
+			continue
 		}
-		pubDate := s.Find(".entry-date.published").First().AttrOr("datetime", "")
+		pubDate := AttrOr(Query(article, ".entry-date.published"), "datetime", "")
 		if pubDate == "" {
-			pubDate = s.Find(".entry-date").First().AttrOr("datetime", "")
+			pubDate = AttrOr(Query(article, ".entry-date"), "datetime", "")
 		}
 		poPostPublicationDate, _ := ParseGroDate(pubDate)
-		poPosterUrl := strings.TrimSpace(s.Find("a").AttrOr("data-src", ""))
-		poPosterUrl = strings.Replace(poPosterUrl, "-480x320", "", 1)
+		posterUrl := strings.TrimSpace(AttrOr(Query(article, "a"), "data-src", ""))
+		posterUrl = strings.Replace(posterUrl, "-480x320", "", 1)
+		poPosterUrl, _ := url.Parse(posterUrl)
 		mpps = append(mpps, mpp.MissingPersonPoster{
 			AlertType:             mpp.AlertTypeAmber,
 			Found:                 found,
@@ -148,7 +148,7 @@ func ScrapeGroAmberAlerts(doc *goquery.Document, client *http.Client) []mpp.Miss
 			PoPostUrl:             poPostUrl,
 			PoState:               mpp.StateGuerrero,
 		})
-	})
+	}
 	return mpps
 }
 
@@ -156,41 +156,34 @@ func MakeGroHasVistoAAlertsUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/hasvistoa/?pagina=%d", pageNum)
 }
 
-func ScrapeGroHasVistoAAlerts(doc *goquery.Document, client *http.Client) []mpp.MissingPersonPoster {
+func ScrapeGroHasVistoAAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 	mpps := []mpp.MissingPersonPoster{}
-	doc.Find("figure").Each(func(i int, s *goquery.Selection) {
-		h4Content, err := s.Find("h4").Html()
+	for _, figure := range QueryAll(doc, "figure") {
+		h4 := Query(figure, "h4")
+		mpName := h4.FirstChild.Data
+		missingDate, _ := time.Parse("2006-01-02", h4.LastChild.Data)
+		postUrl := AttrOr(Query(figure, "a"), "href", "")
+		if postUrl == "" {
+			continue
+		}
+		poPostUrl, err := url.Parse("https://fiscaliaguerrero.gob.mx" + postUrl)
 		if err != nil {
-			return
+			continue
 		}
-		nameAndPubDate := strings.Split(h4Content, "<br/>")
-		var (
-			mpName                string
-			poPostPublicationDate time.Time
-		)
-		if len(nameAndPubDate) == 2 {
-			mpName = nameAndPubDate[0]
-			poPostPublicationDate, _ = time.Parse("2006-01-02", nameAndPubDate[1])
-		} else {
-			return
-		}
-		poPostUrl := s.Find("a").AttrOr("href", "")
-		if poPostUrl == "" {
-			return
-		}
-		poPostUrl = "https://fiscaliaguerrero.gob.mx" + poPostUrl
-		poPosterUrl := s.Find("img").AttrOr("src", "")
-		if poPosterUrl != "" {
-			poPosterUrl = "https://fiscaliaguerrero.gob.mx" + poPosterUrl
+		var poPosterUrl *url.URL
+		posterUrl := AttrOr(Query(figure, "img"), "src", "")
+		if posterUrl != "" {
+			posterUrl = "https://fiscaliaguerrero.gob.mx" + posterUrl
+			poPosterUrl, _ = url.Parse(posterUrl)
 		}
 		mpps = append(mpps, mpp.MissingPersonPoster{
-			AlertType:             mpp.AlertTypeHasVistoA,
-			MpName:                mpName,
-			PoPosterUrl:           poPosterUrl,
-			PoPostPublicationDate: poPostPublicationDate,
-			PoPostUrl:             poPostUrl,
-			PoState:               mpp.StateGuerrero,
+			AlertType:   mpp.AlertTypeHasVistoA,
+			MpName:      mpName,
+			MissingDate: missingDate,
+			PoPosterUrl: poPosterUrl,
+			PoPostUrl:   poPostUrl,
+			PoState:     mpp.StateGuerrero,
 		})
-	})
+	}
 	return mpps
 }

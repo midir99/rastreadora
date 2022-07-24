@@ -5,14 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"text/template"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/midir99/rastreadora/mpp"
 	"github.com/midir99/rastreadora/ws"
+	"golang.org/x/net/html"
 )
 
 type Scraper string
@@ -54,7 +53,6 @@ Flags:
 
     -o      (string): the filename where the data will be stored, if omitted the data will be
                       dumped in STDOUT.
-    -scert  (bool):   skip the verification of the server's certificate chain and hostname.
     -V      (bool):   print the version of the program.
     -h      (bool):   print this usage message.
 `
@@ -131,10 +129,10 @@ func ParseArgs() (*Args, error) {
 }
 
 func PrintVersion() {
-	fmt.Println("rastreadora v0.2.0")
+	fmt.Println("rastreadora v0.3.0	")
 }
 
-func SelectScraperFuncs(scraper Scraper) (func(*goquery.Document, *http.Client) []mpp.MissingPersonPoster, func(uint64) string, error) {
+func SelectScraperFuncs(scraper Scraper) (func(*html.Node) []mpp.MissingPersonPoster, func(uint64) string, error) {
 	switch scraper {
 	case ScraperGroAlba:
 		return ws.ScrapeGroAlbaAlerts, ws.MakeGroAlbaUrl, nil
@@ -161,11 +159,10 @@ func Execute(args *Args) {
 		log.Fatalf("Error: %s", err)
 	}
 	ch := make(chan []mpp.MissingPersonPoster)
-	client := ws.MakeClient(args.SkipCert)
 	for pageNum := args.PageFrom; pageNum <= args.PageUntil; pageNum++ {
 		pageUrl := makeUrl(pageNum)
 		log.Printf("Processing %s ...\n", pageUrl)
-		go ws.Scrape(pageUrl, client, scraper, ch)
+		go ws.Scrape(pageUrl, scraper, ch)
 	}
 	mpps := []mpp.MissingPersonPoster{}
 	pagesCount := args.PageUntil - args.PageFrom + 1
