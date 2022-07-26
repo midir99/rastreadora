@@ -3,11 +3,9 @@ package ws
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/andybalholm/cascadia"
-	"github.com/midir99/rastreadora/mpp"
 	"golang.org/x/net/html"
 )
 
@@ -29,7 +27,7 @@ func RetrieveDocument(url string) (*html.Node, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s responded with a %d status code", url, resp.StatusCode)
+		return nil, fmt.Errorf("%d status code", resp.StatusCode)
 	}
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
@@ -61,14 +59,4 @@ func AttrOr(n *html.Node, attr, or string) string {
 		}
 	}
 	return or
-}
-
-func Scrape(pageUrl string, scraper func(*html.Node) []mpp.MissingPersonPoster, ch chan []mpp.MissingPersonPoster) {
-	doc, err := RetrieveDocument(pageUrl)
-	if err != nil {
-		log.Printf("Error: %s\n", err)
-		ch <- []mpp.MissingPersonPoster{}
-		return
-	}
-	ch <- scraper(doc)
 }

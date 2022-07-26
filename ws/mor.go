@@ -71,15 +71,18 @@ func ScrapeMorAmberPoPosterUrl(pageUrl string) (string, error) {
 	return AttrOr(Query(doc, "div .post-thumb-img-content img"), "src", ""), nil
 }
 
-func ScrapeMorAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
+func ScrapeMorAmberAlerts(doc *html.Node) ([]mpp.MissingPersonPoster, map[int]error) {
 	mpps := []mpp.MissingPersonPoster{}
-	for _, article := range QueryAll(doc, "article") {
+	errs := make(map[int]error)
+	for i, article := range QueryAll(doc, "article") {
 		mpName := cases.Title(language.LatinAmericanSpanish).String(strings.TrimSpace(Query(article, "h2 a").FirstChild.Data))
 		if mpName == "" {
+			errs[i+1] = fmt.Errorf("MpName can't be empty")
 			continue
 		}
 		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "a"), "href", "")))
 		if err != nil {
+			errs[i+1] = fmt.Errorf("can't parse PoPostUrl: %s", err)
 			continue
 		}
 		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(Query(article, "span .published").FirstChild.Data))
@@ -94,22 +97,25 @@ func ScrapeMorAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			PoState:               mpp.StateMorelos,
 		})
 	}
-	return mpps
+	return mpps, errs
 }
 
 func MakeMorCustomUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliamorelos.gob.mx/cedulas/%d/", pageNum)
 }
 
-func ScrapeMorCustomAlerts(doc *html.Node) []mpp.MissingPersonPoster {
+func ScrapeMorCustomAlerts(doc *html.Node) ([]mpp.MissingPersonPoster, map[int]error) {
 	mpps := []mpp.MissingPersonPoster{}
-	for _, article := range QueryAll(doc, "article") {
+	errs := make(map[int]error)
+	for i, article := range QueryAll(doc, "article") {
 		mpName := cases.Title(language.LatinAmericanSpanish).String(strings.TrimSpace(Query(article, "h3 a").FirstChild.Data))
 		if mpName == "" {
+			errs[i+1] = fmt.Errorf("MpName can't be empty")
 			continue
 		}
 		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h3 a"), "href", "")))
 		if err != nil {
+			errs[i+1] = fmt.Errorf("can't parse PoPostUrl: %s", err)
 			continue
 		}
 		poPostPublicationDate, _ := ParseMorDate(strings.TrimSpace(Query(article, "span").FirstChild.Data))
@@ -125,5 +131,5 @@ func ScrapeMorCustomAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			PoState:               mpp.StateMorelos,
 		})
 	}
-	return mpps
+	return mpps, errs
 }

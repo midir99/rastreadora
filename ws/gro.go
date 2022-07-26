@@ -80,16 +80,19 @@ func MakeGroAlbaUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/alba/page/%d/", pageNum)
 }
 
-func ScrapeGroAlbaAlerts(doc *html.Node) []mpp.MissingPersonPoster {
+func ScrapeGroAlbaAlerts(doc *html.Node) ([]mpp.MissingPersonPoster, map[int]error) {
 	mpps := []mpp.MissingPersonPoster{}
-	for _, article := range QueryAll(doc, ".article_content") {
+	errs := make(map[int]error)
+	for i, article := range QueryAll(doc, ".article_content") {
 		foundAndName := strings.TrimSpace(Query(article, "h2 a").FirstChild.Data)
 		mpName, _, found := ParseNameSexFound(foundAndName)
 		if mpName == "" {
+			errs[i+1] = fmt.Errorf("MpName can't be empty")
 			continue
 		}
 		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h2 a"), "href", "")))
 		if err != nil {
+			errs[i+1] = fmt.Errorf("can't parse PoPostUrl: %s", err)
 			continue
 		}
 		pubDate := AttrOr(Query(article, ".entry-date.published"), "datetime", "")
@@ -111,23 +114,26 @@ func ScrapeGroAlbaAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			PoState:               mpp.StateGuerrero,
 		})
 	}
-	return mpps
+	return mpps, errs
 }
 
 func MakeGroAmberUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/category/amber/page/%d/", pageNum)
 }
 
-func ScrapeGroAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
+func ScrapeGroAmberAlerts(doc *html.Node) ([]mpp.MissingPersonPoster, map[int]error) {
 	mpps := []mpp.MissingPersonPoster{}
-	for _, article := range QueryAll(doc, ".article_content") {
+	errs := make(map[int]error)
+	for i, article := range QueryAll(doc, ".article_content") {
 		foundAndName := strings.TrimSpace(Query(article, "h2 a").FirstChild.Data)
 		mpName, mpSex, found := ParseNameSexFound(foundAndName)
 		if mpName == "" {
+			errs[i+1] = fmt.Errorf("MpName can't be empty")
 			continue
 		}
 		poPostUrl, err := url.Parse(strings.TrimSpace(AttrOr(Query(article, "h2 a"), "href", "")))
 		if err != nil {
+			errs[i+1] = fmt.Errorf("can't parse PoPostUrl: %s", err)
 			continue
 		}
 		pubDate := AttrOr(Query(article, ".entry-date.published"), "datetime", "")
@@ -149,25 +155,28 @@ func ScrapeGroAmberAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			PoState:               mpp.StateGuerrero,
 		})
 	}
-	return mpps
+	return mpps, errs
 }
 
 func MakeGroHasVistoAAlertsUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/hasvistoa/?pagina=%d", pageNum)
 }
 
-func ScrapeGroHasVistoAAlerts(doc *html.Node) []mpp.MissingPersonPoster {
+func ScrapeGroHasVistoAAlerts(doc *html.Node) ([]mpp.MissingPersonPoster, map[int]error) {
 	mpps := []mpp.MissingPersonPoster{}
-	for _, figure := range QueryAll(doc, "figure") {
+	errs := make(map[int]error)
+	for i, figure := range QueryAll(doc, "figure") {
 		h4 := Query(figure, "h4")
 		mpName := cases.Title(language.LatinAmericanSpanish).String(h4.FirstChild.Data)
 		missingDate, _ := time.Parse("2006-01-02", h4.LastChild.Data)
 		postUrl := AttrOr(Query(figure, "a"), "href", "")
 		if postUrl == "" {
+			errs[i+1] = fmt.Errorf("MpName can't be empty")
 			continue
 		}
 		poPostUrl, err := url.Parse("https://fiscaliaguerrero.gob.mx" + postUrl)
 		if err != nil {
+			errs[i+1] = fmt.Errorf("can't parse PoPostUrl: %s", err)
 			continue
 		}
 		var poPosterUrl *url.URL
@@ -185,5 +194,5 @@ func ScrapeGroHasVistoAAlerts(doc *html.Node) []mpp.MissingPersonPoster {
 			PoState:     mpp.StateGuerrero,
 		})
 	}
-	return mpps
+	return mpps, errs
 }
