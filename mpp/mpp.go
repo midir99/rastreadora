@@ -80,13 +80,13 @@ const (
 
 type MissingPersonPoster struct {
 	MpName                           string
-	MpHeight                         uint
-	MpWeight                         uint
+	MpHeight                         int
+	MpWeight                         int
 	MpPhysicalBuild                  PhysicalBuild
 	MpComplexion                     Complexion
 	MpSex                            Sex
 	MpDob                            time.Time
-	MpAgeWhenDisappeared             uint
+	MpAgeWhenDisappeared             int
 	MpEyesDescription                string
 	MpHairDescription                string
 	MpOutfitDescription              string
@@ -122,13 +122,13 @@ func (m MissingPersonPoster) MarshalJSON() ([]byte, error) {
 	}
 	basicMpp := struct {
 		MpName                           string `json:"mp_name"`
-		MpHeight                         uint   `json:"mp_height,omitempty"`
-		MpWeight                         uint   `json:"mp_weight,omitempty"`
+		MpHeight                         int    `json:"mp_height,omitempty"`
+		MpWeight                         int    `json:"mp_weight,omitempty"`
 		MpPhysicalBuild                  string `json:"mp_physical_build,omitempty"`
 		MpComplexion                     string `json:"mp_complexion,omitempty"`
 		MpSex                            string `json:"mp_sex,omitempty"`
 		MpDob                            string `json:"mp_dob,omitempty"`
-		MpAgeWhenDisappeared             uint   `json:"mp_age_when_disappeared,omitempty"`
+		MpAgeWhenDisappeared             int    `json:"mp_age_when_disappeared,omitempty"`
 		MpEyesDescription                string `json:"mp_eyes_description,omitempty"`
 		MpHairDescription                string `json:"mp_hair_description,omitempty"`
 		MpOutfitDescription              string `json:"mp_outfit_description,omitempty"`

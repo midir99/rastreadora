@@ -10,14 +10,15 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/midir99/rastreadora/doc"
 	"github.com/midir99/rastreadora/mpp"
 	"github.com/midir99/rastreadora/ws"
-	"golang.org/x/net/html"
 )
 
 type AlertType string
 
 const (
+	AlertTypeCdmxCustom   = "cdmx-custom"
 	AlertTypeGroAlba      = "gro-alba"
 	AlertTypeGroAmber     = "gro-amber"
 	AlertTypeGroHasVistoA = "gro-hasvistoa"
@@ -27,6 +28,7 @@ const (
 
 func AlertTypesAvailable() []AlertType {
 	return []AlertType{
+		AlertTypeCdmxCustom,
 		AlertTypeGroAlba,
 		AlertTypeGroAmber,
 		AlertTypeGroHasVistoA,
@@ -52,10 +54,11 @@ Arguments:
 
 Flags:
 
-    -o      (string): the filename where the data will be stored, if omitted the data will be
-                      dumped in STDOUT.
-    -V      (bool):   print the version of the program.
-    -h      (bool):   print this usage message.
+    -o           (string): the filename where the data will be stored, if omitted the data will be
+                           dumped in STDOUT.
+    -skip-verify (bool):   skip the verification of the server's certificate chain and hostname.
+    -V           (bool):   print the version of the program.
+    -h           (bool):   print this usage message.
 `
 
 func Usage() {
@@ -74,14 +77,14 @@ type Args struct {
 	PageFrom     uint64
 	PageUntil    uint64
 	Out          string
-	SkipCert     bool
+	SkipVerify   bool
 	PrintVersion bool
 }
 
 func ParseArgs() (*Args, error) {
 	args := Args{}
 	flag.StringVar(&args.Out, "o", "", "the filename where the data will be stored, if omitted the data will be dumped in STDOUT.")
-	flag.BoolVar(&args.SkipCert, "scert", false, "skip the verification of the server's certificate chain and hostname.")
+	flag.BoolVar(&args.SkipVerify, "skip-verify", false, "skip the verification of the server's certificate chain and hostname.")
 	flag.BoolVar(&args.PrintVersion, "V", false, "print the version of the program.")
 	flag.Usage = Usage
 	flag.Parse()
@@ -133,8 +136,10 @@ func PrintVersion() {
 	fmt.Println("rastreadora v0.4.0")
 }
 
-func SelectScraperFuncs(alertType AlertType) (func(*html.Node) ([]mpp.MissingPersonPoster, map[int]error), func(uint64) string, error) {
+func SelectScraperFuncs(alertType AlertType) (func(*doc.Doc) ([]mpp.MissingPersonPoster, map[int]error), func(uint64) string, error) {
 	switch alertType {
+	case AlertTypeCdmxCustom:
+		return ws.ScrapeCdmxCustomAlerts, ws.MakeCdmxCustomUrl, nil
 	case AlertTypeGroAlba:
 		return ws.ScrapeGroAlbaAlerts, ws.MakeGroAlbaUrl, nil
 	case AlertTypeGroAmber:
@@ -164,10 +169,9 @@ func mppLegend(mpps int) string {
 	return "missing person posters"
 }
 
-func Scrape(pageUrl string, scraper func(*html.Node) ([]mpp.MissingPersonPoster, map[int]error), ch chan []mpp.MissingPersonPoster) {
-	doc, err := ws.RetrieveDocument(pageUrl)
+func Scrape(pageUrl string, scraper func(*doc.Doc) ([]mpp.MissingPersonPoster, map[int]error), skipVerify bool, ch chan []mpp.MissingPersonPoster) {
+	doc, err := ws.RetrieveDocument(pageUrl, skipVerify)
 	if err != nil {
-		// log.Printf("Done processing %s; 0 entries collected; %s", pageUrl, err)
 		log.Printf("0 entries collected from %s; %s", pageUrl, err)
 		ch <- []mpp.MissingPersonPoster{}
 		return
@@ -181,10 +185,8 @@ func Scrape(pageUrl string, scraper func(*html.Node) ([]mpp.MissingPersonPoster,
 			messages = append(messages, fmt.Sprintf("entry #%d: %s", entryNumber, err))
 		}
 		message := strings.Join(messages, ",")
-		// log.Printf("Done processing %s; %d %s collected; unable to retrieve %d, details: %s", pageUrl, mppsLen, entryWord, errsLen, message)
 		log.Printf("%d %s collected from %s; unable to retrieve %d, details: %s", mppsLen, entryWord, pageUrl, errsLen, message)
 	} else {
-		// log.Printf("Done processing %s; %d %s collected", pageUrl, mppsLen, entryWord)
 		log.Printf("%d %s collected from %s", mppsLen, entryWord, pageUrl)
 	}
 	ch <- mpps
@@ -202,7 +204,7 @@ func Execute(args *Args) {
 	ch := make(chan []mpp.MissingPersonPoster)
 	for pageNum := args.PageFrom; pageNum <= args.PageUntil; pageNum++ {
 		pageUrl := makeUrl(pageNum)
-		go Scrape(pageUrl, scraper, ch)
+		go Scrape(pageUrl, scraper, args.SkipVerify, ch)
 	}
 	mpps := []mpp.MissingPersonPoster{}
 	pagesCount := args.PageUntil - args.PageFrom + 1
