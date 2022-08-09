@@ -133,14 +133,16 @@ func ScrapeCdmxCustomAlerts(d *doc.Doc) ([]mpp.MissingPersonPoster, map[int]erro
 		if len(ageLegend) == 2 {
 			age, _ = ParseCdmxAge(ageLegend[1])
 		}
+		cbsLegend := strings.TrimSpace(strings.ReplaceAll(dataTd.NthChild(6).Text(), "\u00A0", " "))
 		mpps = append(mpps, mpp.MissingPersonPoster{
-			Found:                found,
-			MissingDate:          missingDate,
-			MpAgeWhenDisappeared: age,
-			MpName:               mpName,
-			PoPosterUrl:          poPosterUrl,
-			PoPostUrl:            poPostUrl,
-			PoState:              mpp.StateCiudadDeMexico,
+			CircumstancesBehindDissapearance: cbsLegend,
+			Found:                            found,
+			MissingDate:                      missingDate,
+			MpAgeWhenDisappeared:             age,
+			MpName:                           mpName,
+			PoPosterUrl:                      poPosterUrl,
+			PoPostUrl:                        poPostUrl,
+			PoState:                          mpp.StateCiudadDeMexico,
 		})
 	}
 	return mpps, errs
