@@ -135,7 +135,7 @@ func ParseArgs() (*Args, error) {
 }
 
 func PrintVersion() {
-	fmt.Println("rastreadora v0.5.1")
+	fmt.Println("rastreadora v0.6.0")
 }
 
 func SelectScraperFuncs(alertType AlertType) (func(*doc.Doc) ([]mpp.MissingPersonPoster, map[int]error), func(uint64) string, error) {
