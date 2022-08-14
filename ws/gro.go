@@ -158,7 +158,7 @@ func ScrapeGroAmberAlerts(d *doc.Doc) ([]mpp.MissingPersonPoster, map[int]error)
 	return mpps, errs
 }
 
-func MakeGroHasVistoAAlertsUrl(pageNum uint64) string {
+func MakeGroHasVistoAUrl(pageNum uint64) string {
 	return fmt.Sprintf("https://fiscaliaguerrero.gob.mx/hasvistoa/?pagina=%d", pageNum)
 }
 

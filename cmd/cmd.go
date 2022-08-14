@@ -18,17 +18,19 @@ import (
 type AlertType string
 
 const (
-	AlertTypeCdmxCustom   = "cdmx-custom"
-	AlertTypeGroAlba      = "gro-alba"
-	AlertTypeGroAmber     = "gro-amber"
-	AlertTypeGroHasVistoA = "gro-hasvistoa"
-	AlertTypeMorAmber     = "mor-amber"
-	AlertTypeMorCustom    = "mor-custom"
+	AlertTypeCdmxCustom    = "cdmx-custom"
+	AlertTypeChisHasVistoA = "chis-hasvistoa"
+	AlertTypeGroAlba       = "gro-alba"
+	AlertTypeGroAmber      = "gro-amber"
+	AlertTypeGroHasVistoA  = "gro-hasvistoa"
+	AlertTypeMorAmber      = "mor-amber"
+	AlertTypeMorCustom     = "mor-custom"
 )
 
 func AlertTypesAvailable() []AlertType {
 	return []AlertType{
 		AlertTypeCdmxCustom,
+		AlertTypeChisHasVistoA,
 		AlertTypeGroAlba,
 		AlertTypeGroAmber,
 		AlertTypeGroHasVistoA,
@@ -140,12 +142,14 @@ func SelectScraperFuncs(alertType AlertType) (func(*doc.Doc) ([]mpp.MissingPerso
 	switch alertType {
 	case AlertTypeCdmxCustom:
 		return ws.ScrapeCdmxCustomAlerts, ws.MakeCdmxCustomUrl, nil
+	case AlertTypeChisHasVistoA:
+		return ws.ScrapeChisHasVistoAAlerts, ws.MakeChisHasVistoAUrl, nil
 	case AlertTypeGroAlba:
 		return ws.ScrapeGroAlbaAlerts, ws.MakeGroAlbaUrl, nil
 	case AlertTypeGroAmber:
 		return ws.ScrapeGroAmberAlerts, ws.MakeGroAmberUrl, nil
 	case AlertTypeGroHasVistoA:
-		return ws.ScrapeGroHasVistoAAlerts, ws.MakeGroHasVistoAAlertsUrl, nil
+		return ws.ScrapeGroHasVistoAAlerts, ws.MakeGroHasVistoAUrl, nil
 	case AlertTypeMorAmber:
 		return ws.ScrapeMorAmberAlerts, ws.MakeMorAmberUrl, nil
 	case AlertTypeMorCustom:

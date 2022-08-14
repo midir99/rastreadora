@@ -18,13 +18,17 @@ func ParseCdmxDate(value string) (time.Time, error) {
 	if len(date) != 5 {
 		return time.Time{}, fmt.Errorf("unable to parse date %s", value)
 	}
-	DAY, MONTH, YEAR := 0, 2, 4
-	day, err := strconv.ParseUint(date[DAY], 10, 64)
+	var (
+		Day   = 0
+		Month = 2
+		Year  = 4
+	)
+	day, err := strconv.ParseUint(date[Day], 10, 64)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid day number: %s)", value, date[DAY])
+		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid day number: %s)", value, date[Day])
 	}
 	var month time.Month
-	switch date[MONTH] {
+	switch date[Month] {
 	case "enero":
 		month = time.January
 	case "febrero":
@@ -52,9 +56,9 @@ func ParseCdmxDate(value string) (time.Time, error) {
 	default:
 		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid month: %s)", value, month)
 	}
-	year, err := strconv.ParseUint(date[YEAR], 10, 64)
+	year, err := strconv.ParseUint(date[Year], 10, 64)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid year number: %s)", value, date[YEAR])
+		return time.Time{}, fmt.Errorf("unable to parse date %s (invalid year number: %s)", value, date[Year])
 	}
 	return time.Date(int(year), month, int(day), 0, 0, 0, 0, time.UTC), nil
 }
@@ -74,8 +78,7 @@ func ParseCdmxFound(value string) bool {
 
 func ParseCdmxAge(value string) (int, error) {
 	age := strings.Split(value, " ")
-	YEARS := 0
-	years, err := strconv.ParseUint(age[YEARS], 10, 64)
+	years, err := strconv.ParseUint(age[0], 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("unable to parse age %s", value)
 	}
